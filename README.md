@@ -7,10 +7,11 @@ Rip Mark-ass Brownlee's wallpapers at blazingly fast speeds! 🚀
 This Rust program makes use of [rayon](https://github.com/rayon-rs/rayon) to parallelize the process of downloading all the wallpapers from the Panels API, allowing all wallpapers
 to be downloaded simultaneously.
 
-This version attempts to parse the full spec JSON from the API and downloads *every* single image, in every single gallery, in every single form factor, essentially doing a full
+This version attempts to parse the full spec JSON from the API and downloads _every_ single image, in every single gallery, in every single form factor, essentially doing a full
 rip of the entire backend.
 
 Here's an output of the full rip:
+
 ![image](./assets/folder.png)
 
 This obviously eats a lot of bandwidth and may anger GCP's ratelimits, so use responsibly.
