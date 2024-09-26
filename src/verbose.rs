@@ -39,7 +39,10 @@ pub async fn download_verbose() -> Result<(), Box<dyn std::error::Error>> {
 
     // println!("{:#?}", images);
 
-    download_images_flat(images).await;
+    std::thread::spawn(move || {
+        download_images_flat(images);
+    }).join().unwrap();
+    // download_images_flat(images);
 
     Ok(())
 }
@@ -152,7 +155,7 @@ impl ImageDownload {
     }
 }
 
-async fn download_images_flat(img: Vec<ImageDownload>) {
+fn download_images_flat(img: Vec<ImageDownload>) {
     let rt = tokio::runtime::Runtime::new().unwrap();
     img.par_iter().for_each(|image| {
         let res = rt.block_on(image.download());

@@ -50,15 +50,18 @@ pub async fn download_simple() -> Result<(), Box<dyn std::error::Error>> {
         .map(|url| url::Url::parse(&url).unwrap())
         .collect::<Vec<_>>();
 
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    urls.par_iter().for_each(|url| {
-        let res = rt.block_on(download(url));
-        if let Err(e) = res {
-            eprintln!("Error downloading {}: {:?}", url, e);
-        }
-    });
 
-    rt.shutdown_background();
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        urls.par_iter().for_each(|url| {
+            let res = rt.block_on(download(url));
+            if let Err(e) = res {
+                eprintln!("Error downloading {}: {:?}", url, e);
+            }
+        });
+
+    }).join().unwrap();
+
 
     // println!("{:#?}", urls);
     Ok(())
