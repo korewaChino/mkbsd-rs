@@ -9,6 +9,17 @@ to be downloaded simultaneously.
 
 This obviously eats a lot of bandwidth and may anger GCP's ratelimits, so use responsibly.
 
+## Why?
+
+1. the original code isn't fast enough for me I have a 1GbE connection
+2. This thing is embarrassingly parallel
+3. I love free shit
+4. My 1GbE plan is cheaper than this app
+
+## Aren't you stealing from artists?
+
+yea, but so is piracy in general. if you really like what you see just pay for it, see `LICENSE` for my full opinion
+
 ## Usage
 
 1. [Get Rust](https://rustup.rs)

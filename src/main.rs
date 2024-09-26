@@ -34,7 +34,11 @@ impl Panels {
         let url = self.get_image_url(id, form_factor).unwrap();
         let res = reqwest::get(url).await?;
         let bytes = res.bytes().await?;
-        let filename = format!("{}/{}-{}.jpg", DOWNLOADS_DIR, id, form_factor);
+        println!("Downloaded {} bytes ({url})", bytes.len());
+        let fmt = file_format::FileFormat::from_bytes(&bytes);
+        let ext = fmt.extension();
+        
+        let filename = format!("{DOWNLOADS_DIR}/{}-{}.{ext}", id, form_factor);
         tokio::fs::write(filename, bytes).await?;
         Ok(())
     }
