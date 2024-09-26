@@ -14,7 +14,12 @@ Here's an output of the full rip:
 
 ![image](./assets/folder.png)
 
-This obviously eats a lot of bandwidth and may anger GCP's ratelimits, so use responsibly.
+This program has two backends for downloading files:
+
+- The original verbose mode, which downloads all the images using the "API" bucket which includes every pre-cropped form factor. This uses a lot of storage so be warned.
+- The "simple" mode, which crawls the CDN manifests and downloads the original images from there.
+
+By default, the simple mode will be selected to save storage.
 
 ## Why?
 
