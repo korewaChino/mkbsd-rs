@@ -58,6 +58,8 @@ pub async fn download_simple() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    rt.shutdown_background();
+
     // println!("{:#?}", urls);
     Ok(())
 }

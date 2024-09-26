@@ -161,4 +161,6 @@ async fn download_images_flat(img: Vec<ImageDownload>) {
         }
     });
 
+    rt.shutdown_background();
+
 }
