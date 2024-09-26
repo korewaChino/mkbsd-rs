@@ -8,25 +8,21 @@ use crate::{DATE, DOWNLOADS_DIR};
 pub async fn download_verbose() -> Result<(), Box<dyn std::error::Error>> {
     let spec = Spec::fetch().await?;
     let repos = spec.media.iterate_all();
+    println!("{:#?}", repos);
 
     println!("Iterating through repos...");
-    let repos_iter = repos
-        .par_iter()
-        .map(|repo| {
-            tokio::runtime::Runtime::new()
-                .unwrap()
-                .block_on(Repo::new(repo))
-        })
+
+    let repos_iter = repos.iter().map(|repo| Repo::new(repo)).collect::<Vec<_>>();
+
+    let repos_iter = futures::future::join_all(repos_iter)
+        .await
+        .into_iter()
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
-    // let mut futures = vec![];
-
-    // flatten into vec of (repo_id, link) tuples
-
     let images = repos_iter
-        .iter()
-        .flat_map(|repo| {
+        .par_iter()
+        .flat_map_iter(|repo| {
             repo.data.iter().flat_map(move |(id, image)| {
                 image
                     .image
@@ -73,8 +69,8 @@ pub struct PanelMedia {
 impl PanelMedia {
     pub fn iterate_all(&self) -> Vec<String> {
         self.p
-            .iter()
-            .flat_map(|p| {
+            .par_iter()
+            .flat_map_iter(|p| {
                 self.b
                     .iter()
                     .map(move |b| format!("{root}-{p}-{b}", root = self.root, p = p, b = b))
@@ -106,13 +102,6 @@ impl Repo {
             data: panels.data,
         })
     }
-
-    // pub async fn fetch() -> Result<Self, reqwest::Error> {
-    //     let res = reqwest::get(API_URL).await?;
-    //     let panels = res.json::<Repo>().await?;
-    //     Ok(panels)
-    // }
-
 }
 
 // The image is basically this:
@@ -130,7 +119,6 @@ pub struct Image {
     // every field is a form factor
     image: HashMap<String, String>,
 }
-
 
 #[derive(Debug)]
 struct ImageDownload {
@@ -151,7 +139,6 @@ impl ImageDownload {
         tokio::fs::create_dir_all(&repo_dir).await?;
         let res = reqwest::get(&self.url).await?;
         let bytes = res.bytes().await?;
-        println!("Downloaded {} bytes", bytes.len());
         let fmt = file_format::FileFormat::from_bytes(&bytes);
         let ext = fmt.extension();
         let filename = format!(
@@ -159,27 +146,19 @@ impl ImageDownload {
             id = self.id,
             form_factor = self.form_factor
         );
+        println!("Downloaded {} bytes ({})", bytes.len(), &filename);
         tokio::fs::write(filename, bytes).await?;
         Ok(())
     }
 }
 
-// rewrite of above function but accepts a vec of all images flattened
-
 async fn download_images_flat(img: Vec<ImageDownload>) {
+    let rt = tokio::runtime::Runtime::new().unwrap();
     img.par_iter().for_each(|image| {
-        let res = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(image.download());
+        let res = rt.block_on(image.download());
         if let Err(e) = res {
             eprintln!("Error downloading image: {:?}", e);
         }
     });
 
-    // img.par_iter().for_each(|(id, form_factor)| {
-    //     let res = tokio::runtime::Runtime::new().unwrap().block_on(images.download_image(id, form_factor));
-    //     if let Err(e) = res {
-    //         eprintln!("Error downloading image: {:?}", e);
-    //     }
-    // });
 }

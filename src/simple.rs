@@ -32,7 +32,7 @@ pub async fn download(url: &url::Url) -> Result<(), Box<dyn std::error::Error>> 
 
     let res = reqwest::get(url.clone()).await?;
     let bytes = res.bytes().await?;
-    println!("Downloaded {} bytes", bytes.len());
+    println!("Downloaded {} bytes ({})", bytes.len(), &file_path.display());
     tokio::fs::write(&file_path, &bytes).await?;
 
     Ok(())
@@ -50,10 +50,9 @@ pub async fn download_simple() -> Result<(), Box<dyn std::error::Error>> {
         .map(|url| url::Url::parse(&url).unwrap())
         .collect::<Vec<_>>();
 
+    let rt = tokio::runtime::Runtime::new().unwrap();
     urls.par_iter().for_each(|url| {
-        let res = tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(download(url));
+        let res = rt.block_on(download(url));
         if let Err(e) = res {
             eprintln!("Error downloading {}: {:?}", url, e);
         }
