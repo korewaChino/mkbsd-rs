@@ -26,11 +26,10 @@ pub async fn download(url: &url::Url) -> Result<(), Box<dyn std::error::Error>> 
 
     let dir = file_path.parent().unwrap();
 
-    
     println!("Downloading {} to {}", url, filename);
-    
+
     let dry_run = std::env::var("DRY_RUN").unwrap_or_else(|_| "false".to_string()) == "true";
-    
+
     if dry_run {
         println!("Dry run: Downloading {} to {}", url, filename);
     } else {

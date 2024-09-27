@@ -145,16 +145,16 @@ impl ImageDownload {
             let fmt = file_format::FileFormat::from_bytes(&bytes);
             let ext = fmt.extension();
             let filename = format!(
-            "{repo_dir}/{id}-{form_factor}.{ext}",
-            id = self.id,
-            form_factor = self.form_factor
+                "{repo_dir}/{id}-{form_factor}.{ext}",
+                id = self.id,
+                form_factor = self.form_factor
             );
             println!("Downloaded {} bytes ({})", bytes.len(), &filename);
             tokio::fs::write(filename, bytes).await?;
         } else {
             println!(
-            "Dry run: would download image for repo {}, form factor {} from {}",
-            self.repo_id, self.form_factor, self.url
+                "Dry run: would download image for repo {}, form factor {} from {}",
+                self.repo_id, self.form_factor, self.url
             );
         }
         Ok(())
