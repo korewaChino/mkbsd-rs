@@ -8,7 +8,7 @@ This Rust program makes use of [rayon](https://github.com/rayon-rs/rayon) to par
 to be downloaded simultaneously.
 
 This version attempts to parse the full spec JSON from the API and downloads _every_ single image, in every single gallery, in every single form factor, essentially doing a full
-rip of the entire backend.
+rip of the entire backend storage from [imgix](https://imgix.com)
 
 Here's an output of the full rip:
 
@@ -27,6 +27,7 @@ By default, the simple mode will be selected to save storage.
 2. This thing is embarrassingly parallel
 3. I love free shit
 4. My 1GbE plan is cheaper than this app
+5. spamming imgix is funny
 
 ## Aren't you stealing from artists?
 
