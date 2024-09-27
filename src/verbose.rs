@@ -20,19 +20,25 @@ pub async fn download_verbose() -> Result<(), Box<dyn std::error::Error>> {
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
-    let images: Vec<ImageDownload> = repos_iter
+    let filter_previews =
+        std::env::var("FILTER_PREVIEWS").unwrap_or_else(|_| "false".to_string()) == "true";
+
+    let images: Vec<_> = repos_iter
         .iter()
         .flat_map(|repo| {
             repo.data.iter().flat_map(move |(id, image)| {
-                image
-                    .image
-                    .iter()
-                    .map(move |(form_factor, url)| ImageDownload {
-                        id: id.clone(),
-                        repo_id: repo.repo.clone(),
-                        form_factor: form_factor.clone(),
-                        url: url.clone(),
-                    })
+                image.image.iter().filter_map(move |(form_factor, url)| {
+                    if !filter_previews || form_factor == "dhd" {
+                        Some(ImageDownload {
+                            id: id.clone(),
+                            repo_id: repo.repo.clone(),
+                            form_factor: form_factor.clone(),
+                            url: url.clone(),
+                        })
+                    } else {
+                        None
+                    }
+                })
             })
         })
         .collect();

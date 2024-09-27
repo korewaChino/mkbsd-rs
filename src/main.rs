@@ -54,13 +54,22 @@ enum OperatingMode {
 
 #[derive(clap::Parser)]
 struct Cli {
+    /// The operating mode (backend) to use
     #[clap(short, long)]
     #[clap(value_enum)]
     #[arg(default_value_t)]
     mode: OperatingMode,
 
+    /// Dry run mode, will not download anything
     #[clap(short, long, env = "DRY_RUN")]
     dry_run: bool,
+
+    /// Skip preview images (may save space)
+    /// 
+    /// With the verbose/complete mode, this will skip
+    /// all images that are not in the "dhd" form factor
+    #[clap(short = 'F', long, default_value = "false")]
+    filter_previews: bool,
 }
 
 impl Cli {
@@ -70,10 +79,13 @@ impl Cli {
             std::env::set_var("DRY_RUN", "true");
         }
 
+        if self.filter_previews {
+            std::env::set_var("FILTER_PREVIEWS", "true");
+        }
+
         match self.mode {
             OperatingMode::Verbose => verbose::download_verbose().await,
             OperatingMode::Simple => simple::download_simple().await,
-            // OperatingMode::Simple => verbose::download_verbose().await,
         }
     }
 }

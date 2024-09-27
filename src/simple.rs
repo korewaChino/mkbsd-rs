@@ -56,7 +56,13 @@ pub async fn download_simple() -> Result<(), Box<dyn std::error::Error>> {
     let urls = spec
         .find_urls()
         .into_iter()
-        .map(|url| url::Url::parse(&url).unwrap())
+        .filter_map(|url| url::Url::parse(&url).ok())
+        .filter(|url| {
+            !std::env::var("FILTER_PREVIEWS")
+                .map(|val| val == "true")
+                .unwrap_or(false)
+                || !url.path().contains("_preview")
+        })
         .collect::<Vec<_>>();
 
     download_urls(urls).await;

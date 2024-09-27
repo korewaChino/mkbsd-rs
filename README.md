@@ -42,6 +42,8 @@ yea, but so is piracy in general. if you really like what you see just pay for i
 
 All the images should appear in the `downloads` directory.
 
+For more options, refer to the help page in the command (`--help`)
+
 ## License
 
 Do whatever the fuck you want.
