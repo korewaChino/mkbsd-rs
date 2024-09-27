@@ -4,7 +4,7 @@ A port of [mkbsd](https://github.com/nadimkobeissi/mkbsd) in (Multi-threaded) Ru
 
 Rip Mark-ass Brownlee's wallpapers at blazingly fast speeds! 🚀
 
-This Rust program makes use of [rayon](https://github.com/rayon-rs/rayon) to parallelize the process of downloading all the wallpapers from the Panels API, allowing all wallpapers
+This Rust program makes use of [tokio](https://tokio.rs/) to parallelize the process of downloading all the wallpapers from the Panels API, allowing all wallpapers
 to be downloaded simultaneously.
 
 This version attempts to parse the full spec JSON from the API and downloads _every_ single image, in every single gallery, in every single form factor, essentially doing a full

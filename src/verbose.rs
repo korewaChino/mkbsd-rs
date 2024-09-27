@@ -1,9 +1,9 @@
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 use std::collections::HashMap;
 const SPEC_URL: &str = "https://storage.googleapis.com/panels-api/data";
 use crate::{DATE, DOWNLOADS_DIR};
+use std::sync::Arc;
+use tokio::sync::Semaphore;
 
 pub async fn download_verbose() -> Result<(), Box<dyn std::error::Error>> {
     let spec = Spec::fetch().await?;
@@ -20,9 +20,9 @@ pub async fn download_verbose() -> Result<(), Box<dyn std::error::Error>> {
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
-    let images = repos_iter
-        .par_iter()
-        .flat_map_iter(|repo| {
+    let images: Vec<ImageDownload> = repos_iter
+        .iter()
+        .flat_map(|repo| {
             repo.data.iter().flat_map(move |(id, image)| {
                 image
                     .image
@@ -35,22 +35,19 @@ pub async fn download_verbose() -> Result<(), Box<dyn std::error::Error>> {
                     })
             })
         })
-        .collect::<Vec<_>>();
+        .collect();
 
     // println!("{:#?}", images);
 
-    std::thread::spawn(move || {
-        download_images_flat(images);
-    }).join().unwrap();
-    // download_images_flat(images);
+    download_images_flat(images).await;
 
     Ok(())
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Spec {
-    content: String,
-    search: String,
+    // content: String,
+    // search: String,
     pub media: PanelMedia,
 }
 
@@ -72,8 +69,8 @@ pub struct PanelMedia {
 impl PanelMedia {
     pub fn iterate_all(&self) -> Vec<String> {
         self.p
-            .par_iter()
-            .flat_map_iter(|p| {
+            .iter()
+            .flat_map(|p| {
                 self.b
                     .iter()
                     .map(move |b| format!("{root}-{p}-{b}", root = self.root, p = p, b = b))
@@ -139,31 +136,50 @@ impl ImageDownload {
         );
         let repo_id = &self.repo_id;
         let repo_dir = format!("{DOWNLOADS_DIR}/{repo_id}");
-        tokio::fs::create_dir_all(&repo_dir).await?;
-        let res = reqwest::get(&self.url).await?;
-        let bytes = res.bytes().await?;
-        let fmt = file_format::FileFormat::from_bytes(&bytes);
-        let ext = fmt.extension();
-        let filename = format!(
+        let dry_run = std::env::var("DRY_RUN").unwrap_or_else(|_| "false".to_string()) == "true";
+
+        if !dry_run {
+            tokio::fs::create_dir_all(&repo_dir).await?;
+            let res = reqwest::get(&self.url).await?;
+            let bytes = res.bytes().await?;
+            let fmt = file_format::FileFormat::from_bytes(&bytes);
+            let ext = fmt.extension();
+            let filename = format!(
             "{repo_dir}/{id}-{form_factor}.{ext}",
             id = self.id,
             form_factor = self.form_factor
-        );
-        println!("Downloaded {} bytes ({})", bytes.len(), &filename);
-        tokio::fs::write(filename, bytes).await?;
+            );
+            println!("Downloaded {} bytes ({})", bytes.len(), &filename);
+            tokio::fs::write(filename, bytes).await?;
+        } else {
+            println!(
+            "Dry run: would download image for repo {}, form factor {} from {}",
+            self.repo_id, self.form_factor, self.url
+            );
+        }
         Ok(())
     }
 }
 
-fn download_images_flat(img: Vec<ImageDownload>) {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    img.par_iter().for_each(|image| {
-        let res = rt.block_on(image.download());
-        if let Err(e) = res {
-            eprintln!("Error downloading image: {:?}", e);
-        }
-    });
+async fn download_images_flat(img: Vec<ImageDownload>) {
+    // use all threads from the CPU
+    // let thread_count = core::
+    let semaphore = Arc::new(Semaphore::new(10)); // Limit concurrent downloads to 10
+    let mut handles = vec![];
 
-    rt.shutdown_background();
+    for image in img {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let handle = tokio::spawn(async move {
+            let res = image.download().await;
+            drop(permit); // Release the permit
+            if let Err(e) = res {
+                eprintln!("Error downloading image: {:?}", e);
+            }
+        });
+        handles.push(handle);
+    }
 
+    for handle in handles {
+        handle.await.unwrap();
+    }
 }

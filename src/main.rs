@@ -58,10 +58,18 @@ struct Cli {
     #[clap(value_enum)]
     #[arg(default_value_t)]
     mode: OperatingMode,
+
+    #[clap(short, long, env = "DRY_RUN")]
+    dry_run: bool,
 }
 
 impl Cli {
     pub async fn download(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // set dry run mode
+        if self.dry_run {
+            std::env::set_var("DRY_RUN", "true");
+        }
+
         match self.mode {
             OperatingMode::Verbose => verbose::download_verbose().await,
             OperatingMode::Simple => simple::download_simple().await,

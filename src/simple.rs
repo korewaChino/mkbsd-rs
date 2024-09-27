@@ -1,10 +1,10 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::DOWNLOADS_DIR;
-use rayon::iter::IntoParallelRefIterator;
-use rayon::iter::ParallelIterator;
 use serde::Deserialize;
 use serde_json::Value;
+use tokio::sync::Semaphore;
 const DATE: &str = "20240730";
 // https://storage.googleapis.com/panels-cdn/data/20240730/all.json
 const CDN_URL: &str = "https://storage.googleapis.com/panels-cdn/data";
@@ -26,14 +26,24 @@ pub async fn download(url: &url::Url) -> Result<(), Box<dyn std::error::Error>> 
 
     let dir = file_path.parent().unwrap();
 
-    tokio::fs::create_dir_all(dir).await?;
-
+    
     println!("Downloading {} to {}", url, filename);
-
-    let res = reqwest::get(url.clone()).await?;
-    let bytes = res.bytes().await?;
-    println!("Downloaded {} bytes ({})", bytes.len(), &file_path.display());
-    tokio::fs::write(&file_path, &bytes).await?;
+    
+    let dry_run = std::env::var("DRY_RUN").unwrap_or_else(|_| "false".to_string()) == "true";
+    
+    if dry_run {
+        println!("Dry run: Downloading {} to {}", url, filename);
+    } else {
+        tokio::fs::create_dir_all(dir).await?;
+        let res = reqwest::get(url.clone()).await?;
+        let bytes = res.bytes().await?;
+        println!(
+            "Downloaded {} bytes ({})",
+            bytes.len(),
+            &file_path.display()
+        );
+        tokio::fs::write(&file_path, &bytes).await?;
+    }
 
     Ok(())
 }
@@ -50,21 +60,30 @@ pub async fn download_simple() -> Result<(), Box<dyn std::error::Error>> {
         .map(|url| url::Url::parse(&url).unwrap())
         .collect::<Vec<_>>();
 
-
-    std::thread::spawn(move || {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        urls.par_iter().for_each(|url| {
-            let res = rt.block_on(download(url));
-            if let Err(e) = res {
-                eprintln!("Error downloading {}: {:?}", url, e);
-            }
-        });
-
-    }).join().unwrap();
-
+    download_urls(urls).await;
 
     // println!("{:#?}", urls);
     Ok(())
+}
+
+async fn download_urls(urls: Vec<url::Url>) {
+    let semaphore = Arc::new(Semaphore::new(10)); // Limit concurrent downloads to 10
+    let mut handles = vec![];
+
+    for image in urls {
+        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let handle = tokio::spawn(async move {
+            let res = download(&image).await;
+            drop(permit); // Release the permit
+            if let Err(e) = res {
+                eprintln!("Error downloading image: {:?}", e);
+            }
+        });
+        handles.push(handle);
+    }
+    for handle in handles {
+        handle.await.unwrap();
+    }
 }
 
 impl Cdn {
